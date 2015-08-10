@@ -12,8 +12,8 @@ except ImportError:
 import shutil
 import tempfile
 from hashlib import md5
-
 from functools import partial
+from threading import Lock
 
 import blosc
 import bloscpack
@@ -292,6 +292,7 @@ def pack_file(x, fn, encoding='utf8'):
         with open(fn, 'wb') as f:
             f.write(bytes)
 
+blosck = Lock()
 
 def unpack_file(fn, encoding='utf8'):
     """ Unpack numpy array from filename
@@ -305,11 +306,16 @@ def unpack_file(fn, encoding='utf8'):
         pack_file
     """
     try:
-        return bloscpack.unpack_ndarray_file(fn)
+        with blosck:
+            result = bloscpack.unpack_ndarray_file(fn)
     except ValueError:
         with open(fn, 'rb') as f:
-            return np.array(msgpack.unpackb(blosc.decompress(f.read()),
-                                            encoding=encoding))
+            byts = f.read()
+        with blosck:
+            data = blosc.decompress(byts)
+
+        result = np.array(msgpack.unpackb(data, encoding=encoding))
+    return result
 
 
 def coerce_index(dt, o):
