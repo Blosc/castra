@@ -15,8 +15,8 @@ from hashlib import md5
 
 from functools import partial
 
-import blosc
 import bloscpack
+import bloscpack.file_io as bfio
 
 import numpy as np
 import pandas as pd
@@ -288,9 +288,7 @@ def pack_file(x, fn, encoding='utf8'):
         bloscpack.pack_ndarray_file(x, fn, bloscpack_args=bp_args,
                 blosc_args=blosc_args(x.dtype))
     else:
-        bytes = blosc.compress(msgpack.packb(x.tolist(), encoding=encoding), 1)
-        with open(fn, 'wb') as f:
-            f.write(bytes)
+        bfio.pack_bytes_file(msgpack.packb(x.tolist(), encoding=encoding), fn)
 
 
 def unpack_file(fn, encoding='utf8'):
@@ -307,10 +305,9 @@ def unpack_file(fn, encoding='utf8'):
     try:
         return bloscpack.unpack_ndarray_file(fn)
     except ValueError:
-        with open(fn, 'rb') as f:
-            data = msgpack.unpackb(blosc.decompress(f.read()),
-                                   encoding=encoding)
-            return np.array(data, object, copy=False)
+        data = bfio.unpack_bytes_file(fn)
+        data = msgpack.unpackb(data, encoding=encoding)
+        return np.array(data, object, copy=False)
 
 
 def coerce_index(dt, o):
