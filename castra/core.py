@@ -299,7 +299,7 @@ def pack_file(x, fn, encoding='utf8'):
 def unpack_file(fn, encoding='utf8'):
     """ Unpack numpy array from filename
 
-    Supports binary data with bloscpack and text data with msgpack+blosc
+    Supports binary data with bloscpack and text data with msgpack+bloscpack
 
     >>> unpack_file('foo.blp')  # doctest: +SKIP
     array([1, 2, 3])
