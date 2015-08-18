@@ -17,6 +17,7 @@ from functools import partial
 
 import bloscpack
 import bloscpack.file_io as bfio
+from bloscpack.exceptions import NotANumpyArray
 
 import numpy as np
 import pandas as pd
@@ -308,7 +309,7 @@ def unpack_file(fn, encoding='utf8'):
     """
     try:
         return bloscpack.unpack_ndarray_file(fn)
-    except ValueError:
+    except (ValueError, NotANumpyArray):
         data = bfio.unpack_bytes_file(fn)
         data = msgpack.unpackb(data, encoding=encoding)
         return np.array(data, object, copy=False)
