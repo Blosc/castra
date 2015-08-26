@@ -287,7 +287,7 @@ def pack_file(x, fn, encoding='utf8'):
         bloscpack.pack_ndarray_file(x, fn, bloscpack_args=bp_args,
                                     blosc_args=blosc_args(x.dtype))
     else:
-        pack_object_series_file(x, fn, bloscpack_args=bp_args,
+        pack_object_series_file(x, fn, encoding, bloscpack_args=bp_args,
                                 blosc_args=blosc_args(x.dtype))
 
 
@@ -305,7 +305,7 @@ def unpack_file(fn, encoding='utf8'):
     try:
         return bloscpack.unpack_ndarray_file(fn)
     except KeyError:
-        return unpack_object_series_file(fn)
+        return unpack_object_series_file(fn, encoding)
 
 
 def coerce_index(dt, o):
