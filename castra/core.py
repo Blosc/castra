@@ -443,20 +443,18 @@ def select_partitions(partitions, key):
     start, stop = key.start, key.stop
     if start is not None:
         start = coerce_index(partitions.index.dtype, start)
-        if start in partitions.index:
-            istart = partitions.index.searchsorted(start)
-        elif partitions.index.searchsorted(start) == 0:
+        if partitions.index.searchsorted(start, side='right') == 0:
             istart = 0
         else:
-            istart = partitions.index.searchsorted(start) - 1
+            istart = partitions.index.searchsorted(start, side='right') - 1
     else:
         istart = 0
     if stop is not None:
         stop = coerce_index(partitions.index.dtype, stop)
-        if stop in partitions.index:
-            istop = partitions.index.searchsorted(stop)
+        if partitions.index.searchsorted(stop, side='right') == 0:
+            istop = 0
         else:
-            istop = partitions.index.searchsorted(stop) - 1
+            istop = partitions.index.searchsorted(stop, side='right') - 1
     else:
         istop = len(partitions) - 1
 
