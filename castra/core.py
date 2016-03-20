@@ -125,6 +125,7 @@ class Castra(object):
                 pass
             self.partitions = pd.Series([], dtype='O', index=ind_type([]))
             self.minimum = None
+            self.maximum = None
 
             # check if the given path exists already and create it if it doesn't
             mkdir(self.path)
@@ -162,6 +163,8 @@ class Castra(object):
             self.partitions = loads(f.read())
         with open(self.dirname('meta', 'minimum'), 'rb') as f:
             self.minimum = loads(f.read())
+        with open(self.dirname('meta', 'maximum'), 'rb') as f:
+            self.maximum = loads(f.read())
 
     def save_partitions(self, dumps=partial(pickle.dumps, protocol=2)):
         if self._readonly:
@@ -170,6 +173,8 @@ class Castra(object):
             f.write(dumps(self.minimum))
         with open(self.dirname('meta', 'plist'), 'wb') as f:
             f.write(dumps(self.partitions))
+        with open(self.dirname('meta', 'maximum'), 'wb') as f:
+            f.write(dumps(self.maximum))
 
     def append_categories(self, new, dumps=partial(pickle.dumps, protocol=2)):
         if self._readonly:
@@ -205,12 +210,12 @@ class Castra(object):
                                                             df)
         self.append_categories(new_categories)
 
-        if len(self.partitions) and df.index[0] <= self.partitions.index[-1]:
+        if len(self.partitions) and df.index[0] <= self.maximum:
             if is_trivial_index(df.index):
                 df = df.copy()
-                start = self.partitions.index[-1] + 1
+                start = self.maximum + 1
                 new_index = pd.Index(np.arange(start, start + len(df)),
-                                     name = df.index.name)
+                                     name=df.index.name)
                 df.index = new_index
             else:
                 raise ValueError("Index of new dataframe less than known data")
@@ -231,7 +236,8 @@ class Castra(object):
 
         if not len(self.partitions):
             self.minimum = coerce_index(index.dtype, index.min())
-        self.partitions.loc[index.max()] = partition_name
+        self.maximum = coerce_index(index.dtype, index.max())
+        self.partitions.loc[index.min()] = partition_name
         self.flush()
 
     def extend_sequence(self, seq, freq=None):
@@ -367,11 +373,9 @@ class Castra(object):
         token = md5(str((self.path, os.path.getmtime(self.path))).encode()).hexdigest()
         name = 'from-castra-' + token
 
-        divisions = [self.minimum] + self.partitions.index.tolist()
+        divisions = (self.partitions.index.tolist() + [self.maximum])
         if '.index' in self.categories:
-            divisions = ([self.categories['.index'][0]]
-                       + [self.categories['.index'][d + 1] for d in divisions[1:-1]]
-                       + [self.categories['.index'][-1]])
+            divisions = ([self.categories['.index'][d] for d in divisions])
 
         key_parts = list(enumerate(self.partitions.values))
 
@@ -439,12 +443,20 @@ def select_partitions(partitions, key):
     start, stop = key.start, key.stop
     if start is not None:
         start = coerce_index(partitions.index.dtype, start)
-        istart = partitions.index.searchsorted(start)
+        if start in partitions.index:
+            istart = partitions.index.searchsorted(start)
+        elif partitions.index.searchsorted(start) == 0:
+            istart = 0
+        else:
+            istart = partitions.index.searchsorted(start) - 1
     else:
         istart = 0
     if stop is not None:
         stop = coerce_index(partitions.index.dtype, stop)
-        istop = partitions.index.searchsorted(stop)
+        if stop in partitions.index:
+            istop = partitions.index.searchsorted(stop)
+        else:
+            istop = partitions.index.searchsorted(stop) - 1
     else:
         istop = len(partitions) - 1
 
@@ -550,12 +562,12 @@ def partitionby_none(buf, new):
         return [], new
     if not new.index.is_monotonic_increasing:
         new = new.sort_index(inplace=False)
-    end = buf.index[-1]
-    if end >= new.index[0] and not is_trivial_index(new.index):
-        i = new.index.searchsorted(end, side='right')
+    end = new.index[0]
+    if end >= buf.index[0] and not is_trivial_index(new.index):
+        i = buf.index.searchsorted(end)
         # Only need to concat, `castra.extend` will resort if needed
-        buf = pd.concat([buf, new.iloc[:i]])
-        new = new.iloc[i:]
+        new = pd.concat([buf.iloc[i:], new])
+        buf = buf.iloc[:i]
     return [buf], new
 
 
