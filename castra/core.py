@@ -436,7 +436,7 @@ def select_partitions(partitions, key):
     """ Select partitions from partition list given slice
 
     >>> p = pd.Series(['a', 'b', 'c', 'd', 'e'], index=[0, 10, 20, 30, 40])
-    >>> select_partitions(p, slice(3, 25))
+    >>> select_partitions(p, slice(13, 35))
     ['b', 'c', 'd']
     """
     assert key.step is None, 'step must be None but was %s' % key.step
