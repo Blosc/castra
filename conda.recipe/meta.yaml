@@ -1,0 +1,70 @@
+package:
+  name: castra
+  version: "0.1.7"
+
+source:
+   path: ../
+#  fn: castra-0.1.7.tar.gz
+# url: https://pypi.python.org/packages/f1/f6/c8cd85d0c671cc7c314bbca85b638dba4250931146efdbab374a6044874c/castra-0.1.7.tar.gz
+# md5: fc25b84394e8a600873a318205e3043d
+#  patches:
+   # List any patch files here
+   # - fix.patch
+
+# build:
+  # noarch_python: True
+  # preserve_egg_dir: True
+  # entry_points:
+    # Put any entry points (scripts to be generated automatically) here. The
+    # syntax is module:function.  For example
+    #
+    # - castra = castra:main
+    #
+    # Would create an entry point called castra that calls castra.main()
+
+
+  # If this is a new build for the same version, increment the build
+  # number. If you do not include this key, it defaults to 0.
+  # number: 1
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - numpy
+    - pandas
+    - bloscpack >=0.8.0
+    - blosc
+
+  run:
+    - python
+    - numpy
+    - pandas
+    - bloscpack >=0.8.0
+    - blosc
+
+test:
+  # Python imports
+  imports:
+    - castra
+
+  # commands:
+    # You can put test commands to be run here.  Use this to test that the
+    # entry points work.
+
+
+  # You can also put a file called run_test.py in the recipe that will be run
+  # at test time.
+
+  # requires:
+    # Put any additional test requirements here.  For example
+    # - nose
+
+about:
+  home: http://github.com/blaze/Castra/
+  license: BSD
+  summary: 'On-disk partitioned store'
+
+# See
+# http://docs.continuum.io/conda/build.html for
+# more information about meta.yaml
