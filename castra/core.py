@@ -15,13 +15,12 @@ from hashlib import md5
 
 from functools import partial
 
-import blosc
 import bloscpack
 
 import numpy as np
 import pandas as pd
 
-from pandas import msgpack
+from .bloscpack_ext import pack_object_series_file, unpack_object_series_file
 
 
 bp_args = bloscpack.BloscpackArgs(offsets=False, checksum='None')
@@ -213,7 +212,7 @@ class Castra(object):
                 df = df.copy()
                 start = self.partitions.index[-1] + 1
                 new_index = pd.Index(np.arange(start, start + len(df)),
-                                     name = df.index.name)
+                                     name=df.index.name)
                 df.index = new_index
             else:
                 raise ValueError("Index of new dataframe less than known data")
@@ -392,7 +391,7 @@ class Castra(object):
 def pack_file(x, fn, encoding='utf8'):
     """ Pack numpy array into filename
 
-    Supports binary data with bloscpack and text data with msgpack+blosc
+    Supports binary data with bloscpack and text data with msgpack+bloscpack
 
     >>> pack_file(np.array([1, 2, 3]), 'foo.blp')  # doctest: +SKIP
 
@@ -401,17 +400,16 @@ def pack_file(x, fn, encoding='utf8'):
     """
     if x.dtype != 'O':
         bloscpack.pack_ndarray_file(x, fn, bloscpack_args=bp_args,
-                blosc_args=blosc_args(x.dtype))
+                                    blosc_args=blosc_args(x.dtype))
     else:
-        bytes = blosc.compress(msgpack.packb(x.tolist(), encoding=encoding), 1)
-        with open(fn, 'wb') as f:
-            f.write(bytes)
+        pack_object_series_file(x, fn, encoding, bloscpack_args=bp_args,
+                                blosc_args=blosc_args(x.dtype))
 
 
 def unpack_file(fn, encoding='utf8'):
     """ Unpack numpy array from filename
 
-    Supports binary data with bloscpack and text data with msgpack+blosc
+    Supports binary data with bloscpack and text data with msgpack+bloscpack
 
     >>> unpack_file('foo.blp')  # doctest: +SKIP
     array([1, 2, 3])
@@ -421,11 +419,8 @@ def unpack_file(fn, encoding='utf8'):
     """
     try:
         return bloscpack.unpack_ndarray_file(fn)
-    except ValueError:
-        with open(fn, 'rb') as f:
-            data = msgpack.unpackb(blosc.decompress(f.read()),
-                                   encoding=encoding)
-            return np.array(data, object, copy=False)
+    except KeyError:
+        return unpack_object_series_file(fn, encoding)
 
 
 def coerce_index(dt, o):
