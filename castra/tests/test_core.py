@@ -256,12 +256,12 @@ def test_to_dask_dataframe():
 
         df = c.to_dask()
         assert isinstance(df, dd.DataFrame)
-        assert list(df.divisions) == [1, 2, 20]
+        assert list(df.divisions) == [1, 10, 20]
         tm.assert_frame_equal(df.compute(), c[:])
 
         df = c.to_dask('x')
         assert isinstance(df, dd.Series)
-        assert list(df.divisions) == [1, 2, 20]
+        assert list(df.divisions) == [1, 10, 20]
         tm.assert_series_equal(df.compute(), c[:, 'x'])
 
 
@@ -337,9 +337,9 @@ def test_sort_on_extend():
 
 def test_select_partitions():
     p = pd.Series(['a', 'b', 'c', 'd', 'e'], index=[0, 10, 20, 30, 40])
-    assert select_partitions(p, slice(3, 25)) == ['b', 'c', 'd']
-    assert select_partitions(p, slice(None, 25)) == ['a', 'b', 'c', 'd']
-    assert select_partitions(p, slice(3, None)) == ['b', 'c', 'd', 'e']
+    assert select_partitions(p, slice(13, 35)) == ['b', 'c', 'd']
+    assert select_partitions(p, slice(None, 35)) == ['a', 'b', 'c', 'd']
+    assert select_partitions(p, slice(13, None)) == ['b', 'c', 'd', 'e']
     assert select_partitions(p, slice(None, None)) == ['a', 'b', 'c', 'd', 'e']
     assert select_partitions(p, slice(10, 30)) == ['b', 'c', 'd']
 
@@ -422,8 +422,8 @@ def test_extend_sequence_freq():
     with Castra(template=df) as c:
         c.extend_sequence(seq, freq='h')
         tm.assert_frame_equal(c[:], df)
-        parts = pd.date_range(start=df.index[59], freq='h',
-                              periods=16).insert(17, df.index[-1])
+        parts = pd.date_range(start=df.index[0], freq='h',
+                              periods=17)
         tm.assert_index_equal(c.partitions.index, parts)
 
     with Castra(template=df) as c:
@@ -443,9 +443,9 @@ def test_extend_sequence_none():
         c.extend_sequence(seq)
         tm.assert_frame_equal(c[:], df)
         assert len(c.partitions) == 3
-        assert len(c.load_partition('1--5', ['a', 'b']).index) == 8
-        assert len(c.load_partition('6--7', ['a', 'b']).index) == 3
-        assert len(c.load_partition('9--12', ['a', 'b']).index) == 4
+        assert len(c.load_partition('1--4', ['a', 'b']).index) == 4
+        assert len(c.load_partition('5--6', ['a', 'b']).index) == 5
+        assert len(c.load_partition('7--12', ['a', 'b']).index) == 6
 
 
 def test_extend_sequence_overlap():
@@ -457,7 +457,7 @@ def test_extend_sequence_overlap():
     with Castra(template=df) as c:
         c.extend_sequence(seq)
         tm.assert_frame_equal(c[:], df.sort_index())
-        assert (c.partitions.index == [p.index[-1] for p in seq]).all()
+        assert (c.partitions.index == [p.index[0] for p in seq]).all()
     # Check with trivial index
     p1 = pd.DataFrame({'a': range(10), 'b': range(10)})
     p2 = pd.DataFrame({'a': range(10, 17), 'b': range(10, 17)})
@@ -466,7 +466,7 @@ def test_extend_sequence_overlap():
     with Castra(template=df) as c:
         c.extend_sequence(seq)
         tm.assert_frame_equal(c[:], df)
-        assert (c.partitions.index == [9, 16]).all()
+        assert (c.partitions.index == [0, 10]).all()
 
 
 def test_extend_sequence_single_frame():
@@ -474,8 +474,8 @@ def test_extend_sequence_single_frame():
     seq = [df]
     with Castra(template=df) as c:
         c.extend_sequence(seq, freq='d')
-        assert (c.partitions.index == ['2000-01-01 23:00:00', '2000-01-02 23:00:00',
-                 '2000-01-03 23:00:00', '2000-01-04 23:00:00', '2000-01-05 03:00:00']).all()
+        assert (c.partitions.index == ['2000-01-01 00:00:00', '2000-01-02 00:00:00',
+                 '2000-01-03 00:00:00', '2000-01-04 00:00:00', '2000-01-05 00:00:00']).all()
     df = pd.DataFrame({'a': range(10), 'b': range(10)})
     seq = [df]
     with Castra(template=df) as c:
