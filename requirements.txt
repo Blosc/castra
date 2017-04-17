@@ -1,4 +1,3 @@
 numpy
 pandas
-bloscpack>=0.8.0
-blosc
+bloscpack>=0.9.0

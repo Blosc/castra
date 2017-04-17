@@ -15,8 +15,9 @@ from hashlib import md5
 
 from functools import partial
 
-import blosc
 import bloscpack
+import bloscpack.file_io as bfio
+from bloscpack.exceptions import NotANumpyArray
 
 import numpy as np
 import pandas as pd
@@ -33,6 +34,8 @@ def blosc_args(dt):
         return bloscpack.BloscArgs(dt.itemsize, clevel=3, shuffle=True)
     if np.issubdtype(dt, float):
         return bloscpack.BloscArgs(dt.itemsize, clevel=1, shuffle=False)
+    if dt.hasobject:
+        return bloscpack.BloscArgs(1, clevel=3, shuffle=False)
     return None
 
 
@@ -392,26 +395,26 @@ class Castra(object):
 def pack_file(x, fn, encoding='utf8'):
     """ Pack numpy array into filename
 
-    Supports binary data with bloscpack and text data with msgpack+blosc
+    Supports binary data with bloscpack and text data with msgpack+bloscpack
 
     >>> pack_file(np.array([1, 2, 3]), 'foo.blp')  # doctest: +SKIP
 
     See also:
         unpack_file
     """
-    if x.dtype != 'O':
+    blosc_args_ = blosc_args(x.dtype)
+    if not x.dtype.hasobject:
         bloscpack.pack_ndarray_file(x, fn, bloscpack_args=bp_args,
-                blosc_args=blosc_args(x.dtype))
+                                    blosc_args=blosc_args_)
     else:
-        bytes = blosc.compress(msgpack.packb(x.tolist(), encoding=encoding), 1)
-        with open(fn, 'wb') as f:
-            f.write(bytes)
+        bfio.pack_bytes_file(msgpack.packb(x.tolist(), encoding=encoding), fn,
+                             blosc_args=blosc_args_)
 
 
 def unpack_file(fn, encoding='utf8'):
     """ Unpack numpy array from filename
 
-    Supports binary data with bloscpack and text data with msgpack+blosc
+    Supports binary data with bloscpack and text data with msgpack+bloscpack
 
     >>> unpack_file('foo.blp')  # doctest: +SKIP
     array([1, 2, 3])
@@ -421,11 +424,10 @@ def unpack_file(fn, encoding='utf8'):
     """
     try:
         return bloscpack.unpack_ndarray_file(fn)
-    except ValueError:
-        with open(fn, 'rb') as f:
-            data = msgpack.unpackb(blosc.decompress(f.read()),
-                                   encoding=encoding)
-            return np.array(data, object, copy=False)
+    except (ValueError, NotANumpyArray):
+        data = bfio.unpack_bytes_file(fn)
+        data = msgpack.unpackb(data, encoding=encoding)
+        return np.array(data, object, copy=False)
 
 
 def coerce_index(dt, o):
